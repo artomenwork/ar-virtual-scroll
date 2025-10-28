@@ -31,7 +31,7 @@ export class VirtualScrollContainer implements AfterViewInit {
   constructor() { }
 
   @HostListener('scroll', ['$event'] )
-  onScroll() {
+  onScroll($event: any) {
     const element = this.#elementRef.nativeElement;
     if (this.#lastScroll > element.scrollTop) {
       this.#scroll$.next({
