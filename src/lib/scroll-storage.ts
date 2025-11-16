@@ -99,4 +99,8 @@ export class ScrollStorage<T extends ObjectId> {
     if (startIndex === -1 || endIndex === -1 || startIndex > endIndex) return [];
     return this.items.slice(startIndex, endIndex + 1);
   }
+
+  getLastItems(count: number) {
+    return this.items.slice(0, count);
+  }
 }

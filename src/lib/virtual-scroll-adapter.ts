@@ -2,11 +2,11 @@ import { Datasource } from './datasource';
 import { ScrollStorage } from './scroll-storage';
 import { Adapter } from './adapter';
 import { Observable, Subject } from 'rxjs';
-import { ItemId, ItemWithHeight, ObjectId, VirtualScrollItem } from './types';
+import { ItemId, ItemWithHeight, ObjectId, ScrollInfo, VirtualScrollItem } from './types';
 
 export type AddItemEvent<T> = { item: T; isFirst?: boolean };
 export type UpdateEvent<T> = { id: ItemId; data: T };
-export type DeleteEvent<T> = { id: ItemId };
+export type DeleteEvent<T> = ItemWithHeight<T> & { deletedIndex: number };
 
 export class VirtualScrollAdapter<T extends ObjectId> {
   constructor(
@@ -15,10 +15,12 @@ export class VirtualScrollAdapter<T extends ObjectId> {
     private storage: ScrollStorage<T>
   ) {}
 
-  #addItem = new Subject<AddItemEvent<T>>();
-  #updateItem = new Subject<UpdateEvent<T>>();
-  #deleteItem = new Subject<DeleteEvent<T>>();
-  #scrollToId = new Subject<ItemId>();
+  #addItem$ = new Subject<AddItemEvent<T>>();
+  #updateItem$ = new Subject<UpdateEvent<T>>();
+  #deleteItem$ = new Subject<DeleteEvent<T>>();
+  #scrollToId$ = new Subject<ItemId>();
+  #scrollToBottomForce$ = new Subject<void>();
+  #currentScroll$ = new Subject<ScrollInfo>();
 
   getData(
     id: ItemId,
@@ -56,35 +58,64 @@ export class VirtualScrollAdapter<T extends ObjectId> {
     });
   }
 
+  getLastItems(count: number) {
+    return this.storage.getLastItems(count);
+  }
+
   updateItem(event: UpdateEvent<T>) {
-    this.#updateItem.next(event);
+    this.#updateItem$.next(event);
   }
 
   addItem(event: AddItemEvent<T>) {
-    this.#addItem.next(event);
+    this.#addItem$.next(event);
   }
 
   deleteItem(event: DeleteEvent<T>) {
-    this.#deleteItem.next(event);
+    this.#deleteItem$.next(event);
   }
 
   scrollToId(id: ItemId) {
-    this.#scrollToId.next(id);
+    this.#scrollToId$.next(id);
+  }
+
+  scrollToBottomForce() {
+    this.#scrollToBottomForce$.next();
+  }
+
+  sendScrollInfo(info: ScrollInfo) {
+    this.#currentScroll$.next(info);
   }
 
   get addItem$() {
-    return this.#addItem.asObservable();
+    return this.#addItem$.asObservable();
   }
 
   get updateItem$() {
-    return this.#updateItem.asObservable();
+    return this.#updateItem$.asObservable();
   }
 
   get deleteItem$() {
-    return this.#deleteItem.asObservable();
+    return this.#deleteItem$.asObservable();
   }
 
   get scrollToId$() {
-    return this.#scrollToId.asObservable();
+    return this.#scrollToId$.asObservable();
+  }
+
+  get scrollToBottomForce$() {
+    return this.#scrollToBottomForce$.asObservable();
+  }
+
+  get currentScroll$() {
+    return this.#currentScroll$.asObservable();
+  }
+
+  destroy() {
+    this.#addItem$.complete();
+    this.#updateItem$.complete();
+    this.#deleteItem$.complete();
+    this.#scrollToId$.complete();
+    this.#scrollToBottomForce$.complete();
+    this.#currentScroll$.complete();
   }
 }

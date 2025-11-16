@@ -4,7 +4,7 @@ import {
   Directive,
   ElementRef,
   HostListener,
-  inject,
+  inject, OnDestroy,
   Renderer2,
 } from '@angular/core';
 import { Subject } from 'rxjs';
@@ -13,8 +13,7 @@ import { ScrollInfo } from './types';
 @Directive({
   selector: '[arVirtualScrollContainer]'
 })
-export class VirtualScrollContainer implements AfterViewInit {
-
+export class VirtualScrollContainer implements AfterViewInit, OnDestroy {
   #elementRef = inject(ElementRef<any>);
   #renderer2 = inject(Renderer2);
   #lastScroll = 0;
@@ -27,6 +26,8 @@ export class VirtualScrollContainer implements AfterViewInit {
 
   topHeight = 0;
   bottomHeight = 0;
+
+  #viewportHeight = 0;
 
   constructor() { }
 
@@ -59,6 +60,12 @@ export class VirtualScrollContainer implements AfterViewInit {
     this.#lastScroll = element.scrollTop;
   }
 
+  #resizeObserver = new ResizeObserver(() => {
+    const difference = this.#viewportHeight - this.getViewportHeight();
+    this.setScrollPosition(this.#lastScroll + (difference > 0 ? difference : difference + 1));
+    this.#viewportHeight = this.getViewportHeight();
+  });
+
   ngAfterViewInit() {
     const topScroller = this.#renderer2.createElement('div');
     this.#renderer2.insertBefore(this.#elementRef.nativeElement, topScroller, this.#elementRef.nativeElement.firstChild);
@@ -66,6 +73,9 @@ export class VirtualScrollContainer implements AfterViewInit {
     this.#renderer2.appendChild(this.#elementRef.nativeElement, bottomScroller);
     this.topScroller = topScroller;
     this.bottomScroller = bottomScroller;
+
+    this.#viewportHeight = this.getViewportHeight();
+    this.#resizeObserver.observe(this.#elementRef.nativeElement);
   }
 
   get scroll$() {
@@ -134,5 +144,10 @@ export class VirtualScrollContainer implements AfterViewInit {
     const maxScroll = this.getScrollHeight();
     const clamped = Math.max(0, Math.min(target, maxScroll));
     this.setScrollPosition(clamped);
+  }
+
+  ngOnDestroy() {
+    this.#resizeObserver.disconnect();
+    this.#scroll$.complete();
   }
 }

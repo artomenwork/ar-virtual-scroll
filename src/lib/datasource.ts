@@ -11,6 +11,7 @@ export interface DatasourceSettings<T extends ObjectId> {
   settings?: {
     bufferSize?: number;
     heightToLoadMore?: number;
+    addMethod?: 'fallback' | 'onlyVisible';
   }
 }
 
@@ -28,6 +29,10 @@ export class Datasource<T extends ObjectId> {
 
     if (settings.settings?.heightToLoadMore === undefined) {
       settings.settings = { ...settings.settings, heightToLoadMore: 300 };
+    }
+
+    if (settings.settings?.addMethod === undefined) {
+      settings.settings = { ...settings.settings, addMethod: 'fallback' };
     }
 
     this.#settings = settings;

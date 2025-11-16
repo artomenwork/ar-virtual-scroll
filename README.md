@@ -47,15 +47,6 @@ Try the live demo here: [StackBlitz Demo](https://stackblitz.com/edit/stackblitz
 - Simpler integration, less boilerplate
 - Designed for chat, feeds, and any list with variable content
 
-## 🌐 Browser Support
-
-- Chrome (latest 2 versions)
-- Firefox (latest 2 versions)
-- Edge (latest 2 versions)
-- Safari (latest 2 versions)
-- Opera (latest 2 versions)
-- Mobile browsers (iOS Safari, Chrome for Android)
-
 ## Quick Start
 
 ### 1) Template
@@ -157,53 +148,113 @@ export class AppComponent {
   - `get(id: ItemId, count: number): Observable<T[]>` — load items relative to a specific id.  
   - `settings.bufferSize` — page size.  
   - `settings.heightToLoadMore` — distance (in px) from the edge to trigger loading.
-- `datasource.adapter` — get the Adapter instance for programmatic list control.
+  - `settings.addMethod` — defines how items are added to the view. Defaults to `fallback`.
+- `datasource.adapter` — provides methods for programmatic list control:
+  - `addItem(item: T): boolean` — Adds an item to the list. If the scroll is at the bottom, the item is immediately visible. Otherwise, it will appear when the user scrolls to the bottom.
+  - `updateItem(id: string, changes: Partial<T>): boolean` — Updates an item by its ID with the provided changes.
+  - `deleteItem(id: string): boolean` — Deletes an item by its ID.
+  - `scrollToId(id: string): boolean` — Scrolls to the item with the specified ID.
+  - `scrollToBottomForce(): boolean` — Forces the scroll to the bottom of the list.
 
-### Adapter API
+## 📖 Adapter API
 
 You can access the adapter via `datasource.adapter`. The adapter provides convenient methods to manage the list items programmatically. Each method returns a boolean indicating whether the operation was successful.
 
-#### Methods
+### Methods
 
-- `addItem(item: T): boolean`  
-  Adds an item to the end of the list. If the scroll is at the very bottom, the new item will appear immediately in the view. If the scroll is not at the bottom, the item will be shown only when the user scrolls to the bottom.
-  - **Parameters:**
-    - `item: T` — the item to add (must have a unique `id`)
-  - **Returns:** `boolean` — `true` if the item was added, `false` otherwise
+- **addItem(item: T): boolean**
+  - Adds an item to the end of the list. If the scroll is at the very bottom, the new item will appear immediately in the view. If the scroll is not at the bottom, the item will be shown only when the user scrolls to the bottom.
+  
+  **Parameters:**
+  - `item: T` — the item to add (must have a unique id)
+  
+  **Returns:**
+  - `boolean` — true if the item was added, false otherwise
 
-- `addFirstItem(item: T): boolean`  
-  Adds an item to the beginning of the list.
-  - **Parameters:**
-    - `item: T` — the item to add (must have a unique `id`)
-  - **Returns:** `boolean` — `true` if the item was added, `false` otherwise
+- **addFirstItem(item: T): boolean**
+  - Adds an item to the beginning of the list.
+  
+  **Parameters:**
+  - `item: T` — the item to add (must have a unique id)
+  
+  **Returns:**
+  - `boolean` — true if the item was added, false otherwise
 
-- `update(id: ItemId, data: T): boolean`  
-  Updates an existing item by its `id`.
-  - **Parameters:**
-    - `id: ItemId` — the id of the item to update
-    - `data: T` — the new data for the item
-  - **Returns:** `boolean` — `true` if the item was found and updated, `false` otherwise
+- **update(id: ItemId, data: T): boolean**
+  - Updates an existing item by its id.
+  
+  **Parameters:**
+  - `id: ItemId` — the id of the item to update
+  - `data: T` — the new data for the item
+  
+  **Returns:**
+  - `boolean` — true if the item was found and updated, false otherwise
 
-- `findAndUpdate(findOptions: { find: (item: T) => boolean; data: T }): boolean`  
-  Finds an item by a custom predicate and updates it.
-  - **Parameters:**
-    - `find: (item: T) => boolean` — function to find the item
-    - `data: T` — the new data for the item
-  - **Returns:** `boolean` — `true` if an item was found and updated, `false` otherwise
+- **findAndUpdate(findOptions: { find: (item: T) => boolean; data: T }): boolean**
+  - Finds an item by a custom predicate and updates it.
+  
+  **Parameters:**
+  - `find: (item: T) => boolean` — function to find the item
+  - `data: T` — the new data for the item
+  
+  **Returns:**
+  - `boolean` — true if an item was found and updated, false otherwise
 
-- `delete(id: ItemId): boolean`  
-  Deletes an item by its `id`.
-  - **Parameters:**
-    - `id: ItemId` — the id of the item to delete
-  - **Returns:** `boolean` — `true` if the item was found and deleted, `false` otherwise
+- **delete(id: ItemId): boolean**
+  - Deletes an item by its id.
+  
+  **Parameters:**
+  - `id: ItemId` — the id of the item to delete
+  
+  **Returns:**
+  - `boolean` — true if the item was found and deleted, false otherwise
 
-- `scrollToId(id: ItemId): boolean`  
-  Scrolls the container to the item with the given `id`.
-  - **Parameters:**
-    - `id: ItemId` — the id of the item to scroll to
-  - **Returns:** `boolean` — `true` if the item was found and scrolled to, `false` otherwise
+- **scrollToId(id: ItemId): boolean**
+  - Scrolls the container to the item with the given id.
+  
+  **Parameters:**
+  - `id: ItemId` — the id of the item to scroll to
+  
+  **Returns:**
+  - `boolean` — true if the item was found and scrolled to, false otherwise
 
-> **Note:** All adapter methods return `true` if the operation was successful, or `false` if the item was not found or could not be added/updated/deleted.
+- **scrollToBottomForce(): boolean**
+  - Forces the scroll to the bottom of the list.
+  
+  **Returns:**
+  - `boolean` — true if the operation was successful, false otherwise
+
+- **scroll$: Observable<ScrollInfo>**
+  - Emits scroll events with detailed information about the current scroll state.
+  
+  **Returns:**
+  - `Observable<ScrollInfo>` — an observable stream of scroll events.
+
+## ⚙️ New Property: `addMethod`
+
+The `addMethod` property controls how items are added to the view. It has two modes:
+
+- **`onlyVisible` (legacy behavior):**
+  - Items are added only if they are immediately visible to the user after rendering.
+  - If the scroll is not at the bottom, the item will not appear until the user scrolls to the bottom.
+
+- **`fallback` (default):**
+  - Items are added regardless of visibility if there is no space to load more items below.
+  - If there is space, the `onlyVisible` logic is applied.
+
+### Default Values
+
+If not explicitly set, the following default values are used:
+
+- `bufferSize`: 50
+- `heightToLoadMore`: 300
+- `addMethod`: `fallback`
+
+These defaults ensure smooth scrolling and efficient rendering.
+
+> **Important:**
+> - Avoid animations or dynamic resizing of elements, as they can disrupt virtual scroll calculations.
+> - Ensure item heights remain stable after initial rendering.
 
 ## Recommendations
 

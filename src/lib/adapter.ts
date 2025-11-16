@@ -52,8 +52,8 @@ export class Adapter<T extends ObjectId> {
       return false;
     }
 
-    this.datasource.storage.items.splice(itemIndex, 1);
-    this.datasource.virtualScrollAdapter.deleteItem({ id });
+    const deletedItem = this.datasource.storage.items.splice(itemIndex, 1);
+    this.datasource.virtualScrollAdapter.deleteItem({ ...deletedItem[0], deletedIndex: itemIndex });
     return true;
   }
 
@@ -63,5 +63,13 @@ export class Adapter<T extends ObjectId> {
     }
     this.datasource.virtualScrollAdapter.scrollToId(id);
     return true;
+  }
+
+  scrollToBottomForce() {
+    this.datasource.virtualScrollAdapter.scrollToBottomForce();
+  }
+
+  get scroll$() {
+    return this.datasource.virtualScrollAdapter.currentScroll$;
   }
 }

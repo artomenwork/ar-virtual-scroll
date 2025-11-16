@@ -1,9 +1,9 @@
 import {
-  ChangeDetectorRef,
+  ChangeDetectorRef, DestroyRef,
   Directive,
   EmbeddedViewRef,
   inject,
-  Input,
+  Input, OnDestroy,
   Renderer2,
   TemplateRef,
   ViewContainerRef
@@ -11,18 +11,20 @@ import {
 import { Datasource } from './datasource';
 import { ItemId, ObjectId, ScrollInfo } from './types';
 import { VirtualScrollContainer } from './virtual-scroll-container';
-import { filter, map, of, Subject, switchMap } from 'rxjs';
+import { filter, map, of, Subject, switchMap, tap } from 'rxjs';
 import { AddItemEvent, DeleteEvent, UpdateEvent } from './virtual-scroll-adapter';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Directive({
   selector: '[arVirtualScroll]'
 })
-export class VirtualScroll<T extends ObjectId> {
+export class VirtualScroll<T extends ObjectId> implements OnDestroy {
   #templateRef = inject(TemplateRef<any>);
   #vcr = inject(ViewContainerRef);
   #renderer2 = inject(Renderer2)
   #virtualScrollContainer = inject(VirtualScrollContainer, { host: true });
   #cdr = inject(ChangeDetectorRef);
+  #destroyRef = inject(DestroyRef);
 
   #datasource!: Datasource<T>;
 
@@ -37,6 +39,7 @@ export class VirtualScroll<T extends ObjectId> {
   programScroll = false;
 
   prevCurrentScrollPosition = 0;
+  #newItemsCount = 0;
 
   @Input({ required: true }) set arVirtualScrollIn(datasource: Datasource<T>) {
     this.#datasource = datasource;
@@ -47,6 +50,7 @@ export class VirtualScroll<T extends ObjectId> {
     this.initialScrollData();
 
     this.#virtualScrollContainer.scroll$.pipe(
+      tap(info => this.#datasource.virtualScrollAdapter.sendScrollInfo(info)),
       filter(() => !this.loading && !this.programScroll && this.itemsInView.length >= this.#datasource.settings.settings!.bufferSize! * 3 - 1),
     ).subscribe(scrollInfo => {
       if (scrollInfo.direction === 'up') {
@@ -56,12 +60,14 @@ export class VirtualScroll<T extends ObjectId> {
       }
 
       this.prevCurrentScrollPosition = scrollInfo.current;
+      this.#checkNewItemsView();
     });
 
-    this.#datasource.virtualScrollAdapter.addItem$.subscribe(event => this.#addItem(event));
-    this.#datasource.virtualScrollAdapter.updateItem$.subscribe(event => this.#updateItem(event));
-    this.#datasource.virtualScrollAdapter.deleteItem$.subscribe(event => this.#deleteItem(event));
-    this.#datasource.virtualScrollAdapter.scrollToId$.subscribe(event => this.#scrollToId(event));
+    this.#datasource.virtualScrollAdapter.addItem$.pipe(takeUntilDestroyed(this.#destroyRef)).subscribe(event => this.#addItem(event));
+    this.#datasource.virtualScrollAdapter.updateItem$.pipe(takeUntilDestroyed(this.#destroyRef)).subscribe(event => this.#updateItem(event));
+    this.#datasource.virtualScrollAdapter.deleteItem$.pipe(takeUntilDestroyed(this.#destroyRef)).subscribe(event => this.#deleteItem(event));
+    this.#datasource.virtualScrollAdapter.scrollToId$.pipe(takeUntilDestroyed(this.#destroyRef)).subscribe(event => this.#scrollToId(event));
+    this.#datasource.virtualScrollAdapter.scrollToBottomForce$.pipe(takeUntilDestroyed(this.#destroyRef)).subscribe(() => this.#scrollToBottomForce())
   }
 
   initialScrollData() {
@@ -202,6 +208,41 @@ export class VirtualScroll<T extends ObjectId> {
   }
 
   #addItem(event: AddItemEvent<T>) {
+    if (this.#datasource.settings.settings!.addMethod! === 'onlyVisible') {
+      this.#addItemOnlyView(event);
+    } else {
+      this.#addItemFallback(event);
+    }
+  }
+
+  #addItemFallback(event: AddItemEvent<T>) {
+    const oldScrollPosition = this.#virtualScrollContainer.getScrollPosition();
+    const scrollHeight = this.#virtualScrollContainer.getScrollHeight();
+
+    if (!this.#canLoadMoreDown) {
+      const itemView = this.#vcr.createEmbeddedView(this.#templateRef, {
+        $implicit: event.item,
+        rawItem: {item: event.item, height: 0}
+      });
+      this.itemsInView.push(itemView);
+      itemView.detectChanges();
+      this.saveElementsHeight();
+      if (scrollHeight - oldScrollPosition < 100) {
+        this.setScrollPosition(scrollHeight + itemView.rootNodes[0].offsetHeight + (scrollHeight - oldScrollPosition));
+      }
+
+      if (this.itemsInView.length >= this.#datasource.settings.settings!.bufferSize! * 3 && scrollHeight - oldScrollPosition < 100) {
+        const removeHeight = this.removeItems(0, 1);
+        this.#virtualScrollContainer.addHeightToTop(removeHeight);
+      } else {
+        this.#newItemsCount += 1;
+      }
+    } else {
+      this.#addItemOnlyView(event);
+    }
+  }
+
+  #addItemOnlyView(event: AddItemEvent<T>) {
     const oldScrollPosition = this.#virtualScrollContainer.getScrollPosition();
     const scrollHeight = this.#virtualScrollContainer.getScrollHeight();
 
@@ -247,6 +288,16 @@ export class VirtualScroll<T extends ObjectId> {
     }
   }
 
+  #checkNewItemsView() {
+    if (this.#newItemsCount > 0) {
+      if (this.#virtualScrollContainer.getScrollHeight() - this.#virtualScrollContainer.getScrollPosition() < 100 && !this.#canLoadMoreDown) {
+        const removeHeight = this.removeItems(0, this.#newItemsCount);
+        this.#virtualScrollContainer.addHeightToTop(removeHeight);
+        this.#newItemsCount = 0;
+      }
+    }
+  }
+
   #updateItem(event: UpdateEvent<T>) {
     const oldScrollPosition = this.#virtualScrollContainer.getScrollPosition();
     const scrollHeight = this.#virtualScrollContainer.getScrollHeight();
@@ -264,9 +315,15 @@ export class VirtualScroll<T extends ObjectId> {
   }
 
   #deleteItem(event: DeleteEvent<T>) {
-    const item = this.itemsInView.find(i => i.context.$implicit.id === event.id);
+    const item = this.itemsInView.find(i => i.context.$implicit.id === event.item.id);
     if (item) {
       const itemIndex = this.itemsInView.indexOf(item);
+
+      if (this.#newItemsCount > 0) {
+        this.removeItems(itemIndex, 1);
+        this.#newItemsCount -= 1;
+        return;
+      }
 
       this.loading = true;
 
@@ -315,6 +372,14 @@ export class VirtualScroll<T extends ObjectId> {
 
         this.loading = false;
       });
+    } else {
+      const itemIndex = event.deletedIndex;
+      const currentIndex = this.#datasource.storage.items.findIndex(i => i.item.id === this.itemsInView[0].context.$implicit.id);
+      if (itemIndex > currentIndex) {
+        this.#virtualScrollContainer.minusHeightToTop(event.height);
+      } else {
+        this.#virtualScrollContainer.minusHeightToBottom(event.height);
+      }
     }
   }
 
@@ -444,5 +509,33 @@ export class VirtualScroll<T extends ObjectId> {
         });
       }
     }
+  }
+
+  #scrollToBottomForce() {
+    if (!this.#canLoadMoreDown) {
+      this.setScrollPosition(this.#virtualScrollContainer.getScrollHeight() + this.#virtualScrollContainer.getViewportHeight());
+    } else {
+      this.#virtualScrollContainer.addHeightToTop(this.#virtualScrollContainer.bottomHeight);
+      this.#virtualScrollContainer.minusHeightToBottom(Infinity);
+      const removeHeight = this.removeItems(0, this.itemsInView.length);
+      this.#virtualScrollContainer.addHeightToTop(removeHeight);
+      const lastItems = this.#datasource.virtualScrollAdapter.getLastItems(this.#datasource.settings.settings!.bufferSize! * 3);
+      lastItems.reverse().forEach(item => {
+        const itemView = this.#vcr.createEmbeddedView(this.#templateRef, { $implicit: item.item, rawItem: item });
+        this.itemsInView.push(itemView);
+        itemView.detectChanges();
+      });
+      this.saveElementsHeight();
+
+      const addHeight = this.itemsInView.reduce((acc, item) => (acc + item.rootNodes[0].offsetHeight), 0);
+      this.#virtualScrollContainer.minusHeightToTop(addHeight);
+
+      this.#virtualScrollContainer.setScrollPosition(this.#virtualScrollContainer.getScrollHeight() + this.#virtualScrollContainer.topHeight + this.#virtualScrollContainer.getViewportHeight());
+    }
+  }
+
+  ngOnDestroy() {
+    this.#loadingComplete$.complete();
+    this.#datasource.virtualScrollAdapter.destroy();
   }
 }
