@@ -2,8 +2,9 @@
   "name": "ar-virtual-scroll",
   "description": "Virtual scroll for Angular with auto size detection",
   "author": "Artem Osipenko",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "private": false,
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/artomenwork/ar-virtual-scroll.git"
