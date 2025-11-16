@@ -1,6 +1,9 @@
 {
-  "name": "virtual-scroll",
-  "version": "0.0.1",
+  "name": "ar-virtual-scroll",
+  "description": "Virtual scroll for Angular with auto size detection",
+  "author": "Artem Osipenko",
+  "version": "0.0.4",
+  "private": false,
   "peerDependencies": {
     "@angular/common": "^20.3.0",
     "@angular/core": "^20.3.0"
@@ -8,5 +11,14 @@
   "dependencies": {
     "tslib": "^2.3.0"
   },
+  "keywords": [
+    "angular",
+    "angular-virtual-scroll",
+    "virtual-scroll",
+    "virtual list",
+    "ui",
+    "frontend",
+    "infinite scroll"
+  ],
   "sideEffects": false
 }

@@ -38,7 +38,7 @@ export class VirtualScroll<T extends ObjectId> {
 
   prevCurrentScrollPosition = 0;
 
-  @Input({ required: true }) set appVirtualScrollIn(datasource: Datasource<T>) {
+  @Input({ required: true }) set arVirtualScrollIn(datasource: Datasource<T>) {
     this.#datasource = datasource;
     this.initial();
   }
@@ -287,6 +287,7 @@ export class VirtualScroll<T extends ObjectId> {
 
         if (!info.item) {
           this.loading = false;
+          this.removeItems(itemIndex, 1);
           return;
         }
 

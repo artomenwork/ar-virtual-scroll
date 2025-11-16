@@ -1,4 +1,25 @@
+[![npm version](https://img.shields.io/npm/v/ar-virtual-scroll.svg)](https://www.npmjs.com/package/ar-virtual-scroll)
+[![npm downloads](https://img.shields.io/npm/dm/ar-virtual-scroll.svg)](https://www.npmjs.com/package/ar-virtual-scroll)
+
 # Virtual Scroll (Angular)
+
+
+## 🚀 Installation
+
+```bash
+npm i ar-virtual-scroll
+```
+
+
+## ✨ Features
+
+- Ultra-fast rendering for huge lists (10,000+ items)
+- Dynamic item heights (no fixed height required)
+- Minimal memory usage — only visible items are rendered
+- Simple API, easy integration
+- Adapter for programmatic list control (add, update, delete, scroll)
+- Works with any Angular project, no dependencies on Angular CDK
+
 
 Lightweight Angular library for virtual scrolling of large lists.  
 Works using two directives:
@@ -8,6 +29,32 @@ Works using two directives:
 
 Supports **dynamic item heights**. Heights are measured and cached automatically for smooth scrolling and accurate placeholder sizes.
 
+> **Important limitation:**
+> Do not use animations that change the size of elements, or elements that can change their size over time. 
+> For correct virtual scroll behavior, all item heights must remain stable after initial rendering. 
+> Animations or dynamic resizing will break scroll calculations and may cause incorrect rendering.
+
+## 🧪 Demo
+
+Try the live demo here: [StackBlitz Demo](https://stackblitz.com/edit/stackblitz-starters-fvyrz2cl?file=src%2Fmain.html)
+
+## ❓ Why not Angular CDK Virtual Scroll?
+
+- Supports **dynamic item heights** out of the box (CDK requires fixed height)
+- No need to calculate or hardcode item sizes
+- Adapter API for programmatic control (add, update, delete, scroll)
+- Simpler integration, less boilerplate
+- Designed for chat, feeds, and any list with variable content
+
+## 🌐 Browser Support
+
+- Chrome (latest 2 versions)
+- Firefox (latest 2 versions)
+- Edge (latest 2 versions)
+- Safari (latest 2 versions)
+- Opera (latest 2 versions)
+- Mobile browsers (iOS Safari, Chrome for Android)
+
 ## Quick Start
 
 ### 1) Template
@@ -15,13 +62,12 @@ Supports **dynamic item heights**. Heights are measured and cached automatically
 The container must include the `appVirtualScrollContainer` directive and proper scrollable styles.
 
 ```html
-<div class="viewport" appVirtualScrollContainer>
-  <div class="messages" *appVirtualScroll="let item in datasource;">
+<div class="viewport" arVirtualScrollContainer>
+  <div class="messages" *arVirtualScroll="let item in datasource;">
     <div>
       <span>{{ item.id }} - {{ item.text }}</span>
     </div>
   </div>
-  <!-- Elements above/below are replaced by placeholders -->
   <!-- Top and bottom placeholders are managed automatically -->
 </div>
 ```
@@ -110,9 +156,61 @@ export class AppComponent {
   - `get(id: ItemId, count: number): Observable<T[]>` — load items relative to a specific id.  
   - `settings.bufferSize` — page size.  
   - `settings.heightToLoadMore` — distance (in px) from the edge to trigger loading.
+- `datasource.adapter` — get the Adapter instance for programmatic list control.
+
+### Adapter API
+
+You can access the adapter via `datasource.adapter`. The adapter provides convenient methods to manage the list items programmatically. Each method returns a boolean indicating whether the operation was successful.
+
+#### Methods
+
+- `addItem(item: T): boolean`  
+  Adds an item to the end of the list. If the scroll is at the very bottom, the new item will appear immediately in the view. If the scroll is not at the bottom, the item will be shown only when the user scrolls to the bottom.
+  - **Parameters:**
+    - `item: T` — the item to add (must have a unique `id`)
+  - **Returns:** `boolean` — `true` if the item was added, `false` otherwise
+
+- `addFirstItem(item: T): boolean`  
+  Adds an item to the beginning of the list.
+  - **Parameters:**
+    - `item: T` — the item to add (must have a unique `id`)
+  - **Returns:** `boolean` — `true` if the item was added, `false` otherwise
+
+- `update(id: ItemId, data: T): boolean`  
+  Updates an existing item by its `id`.
+  - **Parameters:**
+    - `id: ItemId` — the id of the item to update
+    - `data: T` — the new data for the item
+  - **Returns:** `boolean` — `true` if the item was found and updated, `false` otherwise
+
+- `findAndUpdate(findOptions: { find: (item: T) => boolean; data: T }): boolean`  
+  Finds an item by a custom predicate and updates it.
+  - **Parameters:**
+    - `find: (item: T) => boolean` — function to find the item
+    - `data: T` — the new data for the item
+  - **Returns:** `boolean` — `true` if an item was found and updated, `false` otherwise
+
+- `delete(id: ItemId): boolean`  
+  Deletes an item by its `id`.
+  - **Parameters:**
+    - `id: ItemId` — the id of the item to delete
+  - **Returns:** `boolean` — `true` if the item was found and deleted, `false` otherwise
+
+- `scrollToId(id: ItemId): boolean`  
+  Scrolls the container to the item with the given `id`.
+  - **Parameters:**
+    - `id: ItemId` — the id of the item to scroll to
+  - **Returns:** `boolean` — `true` if the item was found and scrolled to, `false` otherwise
+
+> **Note:** All adapter methods return `true` if the operation was successful, or `false` if the item was not found or could not be added/updated/deleted.
 
 ## Recommendations
 
 - Wrap each rendered element inside a `<div>` for consistent margin and padding rendering.  
 - Ensure that items have stable DOM structures — the library automatically measures and caches their heights.  
+- **Do not use animations or dynamic content that changes item size after rendering.**  
 - Works well for chat UIs, message feeds, and infinite lists.
+
+## 📄 License
+
+MIT
