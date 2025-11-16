@@ -3,6 +3,7 @@
 
 # Virtual Scroll (Angular)
 
+[GitHub](https://github.com/artomenwork/ar-virtual-scroll) · [NPM](https://www.npmjs.com/package/ar-virtual-scroll)
 
 ## 🚀 Installation
 
