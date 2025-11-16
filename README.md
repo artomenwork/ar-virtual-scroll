@@ -1,9 +1,12 @@
 [![npm version](https://img.shields.io/npm/v/ar-virtual-scroll.svg)](https://www.npmjs.com/package/ar-virtual-scroll)
 [![npm downloads](https://img.shields.io/npm/dm/ar-virtual-scroll.svg)](https://www.npmjs.com/package/ar-virtual-scroll)
+[![awesome-angular](https://awesome.re/badge.svg)](https://github.com/PatrickJS/awesome-angular)
+
 
 # Virtual Scroll (Angular)
 
-[GitHub](https://github.com/artomenwork/ar-virtual-scroll) · [NPM](https://www.npmjs.com/package/ar-virtual-scroll)
+[GitHub](https://github.com/artomenwork/ar-virtual-scroll) · [NPM](https://www.npmjs.com/package/ar-virtual-scroll) · [Awesome-Angular](https://github.com/PatrickJS/awesome-angular)
+
 
 ## 🚀 Installation
 
